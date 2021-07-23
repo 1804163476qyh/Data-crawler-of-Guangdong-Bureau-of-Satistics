@@ -1,0 +1,125 @@
+import pandas as pd
+import pymysql
+import requests
+import re
+import os
+import csv
+import xlwt
+from bs4 import BeautifulSoup
+
+pip install xlwt
+
+#1.发送请求
+
+def get_page(url1):
+    #1.请求页面时发送什么数据（以什么请求）
+    headers = {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) \
+    AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15"}
+    #3.get/post请求
+    #4.发送请求
+    response = requests.get(url1,headers=headers)
+    text = response.text
+    #print(response.text)
+    return text
+
+
+#2.爬取目标网址
+
+def parse_page1(text):
+    soup = BeautifulSoup(text,"lxml")
+    for divlist in soup.find_all("div", attrs={"class":"main"} ):
+        html = divlist.find_all('li')  
+        for i in html:
+            print(i)
+    return  html
+
+    #或者：def parse_page1(text,html):
+       #      soup = BeautifulSoup(text,"lxml")
+       #      divlist = soup.find("div", attrs={"class":"main"} )
+       #      html = divlist.find_all('li')  
+       #      for i in html:
+       #           print(i)
+       #      return html
+
+
+
+#3.提取目标网址url
+
+def parse_page2(html):
+    url = r"(?<=href=\").+?(?=\")|(?<=href=\').+?(?=\')"
+    urllist = re.findall(url,html,re.I|re.S|re.M)
+    for i in urllist:
+        print(i)
+    return urllist
+
+
+    #从网址中爬出目标信息 soup
+
+    def parse_page3(url):
+        soup = BeautifulSoup(get_page(url),'html.parser')
+        try:
+            div = soup.find("div", attrs={"class":"nr"})
+            table = div.find("tbody")
+            return table
+        except ValueError:
+            return str(url) + "no valid table"
+
+#4.从网址中爬出目标信息 pd +存储
+
+def parse_page4(url):
+    table = pd.read_html(url)[1] #读取目标URL第2个表格
+    table.to_csv('2020-2000广东旅客2.csv',mode='a+') #存储到csv
+    return table
+
+
+    #测试
+    import pandas as pd
+    df = pd.read_html('http://stats.gd.gov.cn/lyjdrs/content/post_1424440.html')[1]
+    df.to_csv('2000年4月广东旅客.csv',mode='a+') 
+    df
+
+#主函数 抓取所有目标网址URL
+start_url = "http://stats.gd.gov.cn/lyjdrs/index.html"
+text=get_page(start_url)
+htmllist=parse_page1(text)
+urllist1=parse_page2(str(htmllist))
+urllist1=list(urllist1)
+
+urllist=[]
+urllist2=[]
+for i in range(2,13):
+    url = 'http://stats.gd.gov.cn/lyjdrs/index_' + str(i)+'.html'
+    urllist = parse_page2(str(parse_page1(get_page(url))))
+    urllist2+=urllist
+
+urllist3=urllist1+urllist2 #所有目标网址URL集合
+
+
+#测试目标网址数据
+cnt1=0
+for i in urllist1:
+    cnt1=cnt1+1
+print("一共有"+str(cnt1)+"条数据")
+
+cnt2=0
+for i in urllist2:
+    cnt2=cnt2+1
+print("一共有"+str(cnt2)+"条数据")
+
+
+cnt3=0
+for i in urllist3:
+    cnt3=cnt3+1
+
+print("一共有"+str(cnt3)+"条数据")
+
+#主函数 抓取信息并存入
+for i in urllist3:
+    print(i)
+    try:
+        x=parse_page4(i)
+    except:
+        print('none')
+
+data=pd.read_csv('2020-2000广东旅客.csv')
+data
